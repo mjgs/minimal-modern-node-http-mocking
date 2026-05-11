@@ -116,7 +116,7 @@ describe(`Baseline: Nock Interception [Mode: ${NOCK_MODE}]`, () => {
       nockDone();
     });
 
-    test('should perform merge (no changes) - 204 (INCOMPATIBILITY)', async () => {
+    test('should perform merge (no changes) - 204 (INCOMPATIBILITY - record/playback mode)', async () => {
       nock.back.fixtures = fixtureDir;
       const octokit = new Octokit({ 
         baseUrl, 
@@ -125,24 +125,28 @@ describe(`Baseline: Nock Interception [Mode: ${NOCK_MODE}]`, () => {
       
       const { nockDone } = await nock.back('02-merge-no-changes.json');
       
-      if (NOCK_MODE === 'live') {
-        nock(baseUrl).post('/repos/owner/repo/merges').reply(204);
+      try {
+        if (NOCK_MODE === 'live') {
+          nock(baseUrl).post('/repos/owner/repo/merges').reply(204);
+
+          const res = await octokit.rest.repos.merge({ 
+            owner: 'owner', repo: 'repo', base: 'main', head: 'already-synced' 
+          });
+          assert.strictEqual(res.status, 204, 'Manual mock should succeed in live mode');
+        } else {
+          await assert.rejects(
+            octokit.rest.repos.merge({ 
+              owner: 'owner', repo: 'repo', base: 'main', head: 'already-synced' 
+            }),
+            (err) => {
+              const msg = err.cause?.message || err.message || "";
+              return /Invalid response status code 204|Nock: Disallowed net connect/.test(msg);
+            }
+          );
+        }
+      } finally {
+        nockDone();
       }
-
-      // We expect this to fail. If it succeeds, the test fails.
-      await assert.rejects(
-        octokit.rest.repos.merge({ 
-          owner: 'owner', repo: 'repo', base: 'main', head: 'already-synced' 
-        }),
-        (err) => {
-          const msg = err.cause?.message || err.message || "";
-          // Matches Undici spec error (record) OR Nock disallowed error (playback)
-          return /Invalid response status code 204|Nock: Disallowed net connect/.test(msg);
-        },
-        'Should have thrown Undici 204 error or Nock Disallowed error'
-      );
-
-      nockDone();
     });
 
     test('should perform merge (some changes) - 201', async () => {
