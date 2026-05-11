@@ -59,9 +59,10 @@ describe(`Baseline: Nock Interception [Mode: ${NOCK_MODE}]`, () => {
         const octokit = new Octokit({ baseUrl });
         const { data } = await octokit.request('GET /repos/owner/repo');
 
-        if (NOCK_MODE === 'off' || NOCK_MODE === 'record') {
+        if (NOCK_MODE === 'off' || NOCK_MODE === 'record' || NOCK_MODE === 'playback') {
           assert.strictEqual(data.full_name, 'owner/repo');
         } else {
+          // This runs only in 'live' mode
           assert.strictEqual(data.mock, true);
         }
       } finally {
@@ -80,9 +81,10 @@ describe(`Baseline: Nock Interception [Mode: ${NOCK_MODE}]`, () => {
         const octokit = new Octokit({ baseUrl, request: { fetch: nodeFetch } });
         const { data } = await octokit.request('GET /repos/owner/repo');
         
-        if (NOCK_MODE === 'off' || NOCK_MODE === 'record') {
+        if (NOCK_MODE === 'off' || NOCK_MODE === 'record' || NOCK_MODE === 'playback') {
           assert.strictEqual(data.full_name, 'owner/repo');
         } else {
+          // This runs only in 'live' mode
           assert.strictEqual(data.mock, true);
         }
       } finally {
