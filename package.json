@@ -1,0 +1,31 @@
+{
+  "name": "modern-node-http-mocking",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "directories": {
+    "test": "test"
+  },
+  "scripts": {
+    "test": "npm run test:nock; npm run test:poly",
+    "test:nock": "node --test --test-reporter=spec test/nock/server.test.js",
+    "test:poly": "node --test --test-concurrency=1 test/poly/server.test.js",
+    "test:all": "node --test --test-concurrency=1 test/**/*.test.js"
+  },
+  "keywords": [],
+  "author": "Mark Smith",
+  "license": "ISC",
+  "type": "module",
+  "dependencies": {
+    "express": "^5.2.1",
+    "node-fetch": "^3.3.2",
+    "octokit": "^5.0.5"
+  },
+  "devDependencies": {
+    "@pollyjs/adapter-fetch": "^6.0.7",
+    "@pollyjs/adapter-node-http": "^6.0.6",
+    "@pollyjs/core": "^6.0.6",
+    "@pollyjs/persister-fs": "^6.0.6",
+    "nock": "^14.0.15"
+  }
+}
