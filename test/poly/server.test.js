@@ -19,7 +19,7 @@ Polly.register(FSPersister);
 const POLLY_MODE = process.env.POLLY_MODE || 'live';
 const FIXTURES_BASE = path.join(process.cwd(), 'test/fixtures/poly');
 const port = 3002;
-const baseUrl = `http://localhost:${port}`;
+const baseUrl = `http://127.0.0.1:${port}`;
 
 const MODE_MAP = {
   record: 'record',
@@ -52,6 +52,9 @@ async function setupPolly(testName, adapters = ['fetch', 'node-http']) {
     persister: 'fs',
     persisterOptions: {
       fs: { recordingsDir: FIXTURES_BASE }
+    },
+    matchRequestsBy: {
+      headers: false // Tell Polly: "Just match the URL and Method, ignore the headers"
     },
     logging: false,
     recordFailedRequests: true
