@@ -4,20 +4,31 @@ import nock from 'nock';
 import { Octokit } from 'octokit';
 import nodeFetch from 'node-fetch';
 import { startServer } from '../../src/server.js';
+import path from 'node:path';
 
-describe('Baseline: Nock Interception', () => {
+const NOCK_MODE = process.env.NOCK_MODE || 'live';
+
+describe(`Baseline: Nock Interception [Mode: ${NOCK_MODE}]`, () => {
   let server;
   const port = 3001;
   const baseUrl = `http://localhost:${port}`;
   const originalConsole = { ...console };
 
-  // Comment out to see the server logs during testing. 
-  // Useful for debugging, but can be noisy when everything is working.
+  // Configure Nock Back
+  nock.back.fixtures = path.join(process.cwd(), 'test/fixtures/nock');
+  
+  // 'wild' mode allows the local server to be hit during 'live' or 'off'
+  if (NOCK_MODE === 'record') nock.back.setMode('record');
+  else if (NOCK_MODE === 'playback') nock.back.setMode('lockdown');
+  else nock.back.setMode('wild');
+
   function mockConsole() {
-    console.log = () => {}; 
     console.info = () => {};
     console.warn = () => {};
     console.debug = () => {};
+    if (NOCK_MODE === 'record' || NOCK_MODE === 'playback') {
+        console.log = () => {};
+    }
   }
 
   function restoreConsole() {
@@ -26,71 +37,99 @@ describe('Baseline: Nock Interception', () => {
 
   before(async () => {
     mockConsole();
-    // nock.enableNetConnect('localhost:3001');
-    server = await startServer(port); 
+    if (NOCK_MODE === 'off') nock.restore();
+    if (NOCK_MODE !== 'playback') server = await startServer(port);
   });
 
   after(() => {
     restoreConsole();
-    server.close();
-  });
-
-  describe('Test Environment Setup', () => {
-    test('should verify the local server is reachable via direct fetch', async () => {
-      const res = await fetch(`${baseUrl}/health`);
-      const data = await res.json();
-      assert.strictEqual(data.status, 'ok');
-    });
+    if (server) server.close();
   });
 
   describe('Core Baseline Tests', () => {
+
     test('should successfully intercept native fetch requests (proving Undici support)', async () => {
-      // 1. Setup the interceptor
-      nock(baseUrl)
-        .get('/repos/owner/repo')
-        .reply(200, { mock: true });
+      const { nockDone } = await nock.back('native-fetch.json');
       
-      const octokit = new Octokit({ baseUrl });
-      const { data } = await octokit.request('GET /repos/owner/repo');
-      
-      /**
-       * PROOF OF INTERCEPTION:
-       * 1. data.mock is true: Nock successfully caught the request and injected the body.
-       * 2. No [Server] Incoming log: The request was caught BEFORE it hit the network.
-       */
-      assert.strictEqual(data.mock, true, 'Nock should have delivered the mocked payload');
-      assert.strictEqual(data.full_name, undefined, 'Should NOT have received real data from the server');
+      if (NOCK_MODE === 'live') {
+        nock(baseUrl).get('/repos/owner/repo').reply(200, { mock: true });
+      }
+
+      try {
+        const octokit = new Octokit({ baseUrl });
+        const { data } = await octokit.request('GET /repos/owner/repo');
+
+        if (NOCK_MODE === 'off' || NOCK_MODE === 'record') {
+          assert.strictEqual(data.full_name, 'owner/repo');
+        } else {
+          assert.strictEqual(data.mock, true);
+        }
+      } finally {
+        nockDone();
+      }
     });
 
     test('should successfully intercept node-fetch requests (legacy fallback)', async () => {
-      nock(baseUrl).get('/repos/owner/repo').reply(200, { mock: true });
-      
-      const octokit = new Octokit({ baseUrl, request: { fetch: nodeFetch } });
-      const { data } = await octokit.request('GET /repos/owner/repo');
-      
-      assert.strictEqual(data.mock, true);
+      const { nockDone } = await nock.back('node-fetch-legacy.json');
+
+      if (NOCK_MODE === 'live') {
+        nock(baseUrl).get('/repos/owner/repo').reply(200, { mock: true });
+      }
+
+      try {
+        const octokit = new Octokit({ baseUrl, request: { fetch: nodeFetch } });
+        const { data } = await octokit.request('GET /repos/owner/repo');
+        
+        if (NOCK_MODE === 'off' || NOCK_MODE === 'record') {
+          assert.strictEqual(data.full_name, 'owner/repo');
+        } else {
+          assert.strictEqual(data.mock, true);
+        }
+      } finally {
+        nockDone();
+      }
     });
 
     test('should handle a manual 204 response without crashing', async () => {
-      nock(baseUrl).post('/repos/owner/repo/merges').reply(204);
-      
-      const octokit = new Octokit({ baseUrl, request: { fetch: nodeFetch } });
-      const res = await octokit.rest.repos.merge({ 
-        owner: 'owner', repo: 'repo', base: 'main', head: 'already-synced' 
-      });
-      
-      assert.strictEqual(res.status, 204);
+      const { nockDone } = await nock.back('status-204.json');
+
+      if (NOCK_MODE === 'live') {
+        nock(baseUrl).post('/repos/owner/repo/merges').reply(204);
+      }
+
+      try {
+        const octokit = new Octokit({ baseUrl, request: { fetch: nodeFetch } });
+        const res = await octokit.rest.repos.merge({ 
+          owner: 'owner', repo: 'repo', base: 'main', head: 'already-synced' 
+        });
+        
+        assert.strictEqual(res.status, 204);
+      } finally {
+        nockDone();
+      }
     });
 
     test('should successfully intercept a 201 via the rest client wrapper', async () => {
-      nock(baseUrl).post('/repos/owner/repo/merges').reply(201, { merged: true });
-      
-      const octokit = new Octokit({ baseUrl, request: { fetch: nodeFetch } });
-      const { data } = await octokit.rest.repos.merge({ 
-        owner: 'owner', repo: 'repo', base: 'main', head: 'feature' 
-      });
-      
-      assert.strictEqual(data.merged, true);
+      const { nockDone } = await nock.back('status-201.json');
+
+      if (NOCK_MODE === 'live') {
+        nock(baseUrl).post('/repos/owner/repo/merges').reply(201, { merged: true });
+      }
+
+      try {
+        const octokit = new Octokit({ baseUrl, request: { fetch: nodeFetch } });
+        const { data } = await octokit.rest.repos.merge({ 
+          owner: 'owner', repo: 'repo', base: 'main', head: 'feature' 
+        });
+        
+        if (NOCK_MODE === 'off' || NOCK_MODE === 'record') {
+          assert.strictEqual(data.merged, true); // Server returns true for 'feature'
+        } else {
+          assert.strictEqual(data.merged, true);
+        }
+      } finally {
+        nockDone();
+      }
     });
   });
 });

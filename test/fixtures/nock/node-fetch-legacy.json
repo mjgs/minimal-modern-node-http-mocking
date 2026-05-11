@@ -1,0 +1,22 @@
+[
+    {
+        "scope": "http://localhost:3001",
+        "method": "GET",
+        "path": "/repos/owner/repo",
+        "body": "",
+        "status": 200,
+        "response": {
+            "name": "repo",
+            "full_name": "owner/repo"
+        },
+        "rawHeaders": {
+            "connection": "close",
+            "content-length": "40",
+            "content-type": "application/json; charset=utf-8",
+            "date": "Mon, 11 May 2026 09:13:46 GMT",
+            "etag": "W/\"28-J4t0bdguo4p5KbHJUbtZdyOMGrQ\"",
+            "x-powered-by": "Express"
+        },
+        "responseIsBinary": false
+    }
+]
