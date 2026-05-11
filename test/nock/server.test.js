@@ -46,6 +46,14 @@ describe(`Baseline: Nock Interception [Mode: ${NOCK_MODE}]`, () => {
     if (server) server.close();
   });
 
+  describe('Test Environment Setup', () => {
+    test('should verify the local server is reachable via direct fetch', async () => {
+      const res = await fetch(`${baseUrl}/health`);
+      const data = await res.json();
+      assert.strictEqual(data.status, 'ok');
+    });
+  });
+
   describe('Core Baseline Tests', () => {
 
     test('should successfully intercept native fetch requests (proving Undici support)', async () => {
