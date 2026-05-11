@@ -7,9 +7,9 @@
     "test": "test"
   },
   "scripts": {
-    "test": "npm run test:nock; npm run test:poly",
-    "test:nock": "node --test --test-reporter=spec test/nock/server.test.js",
-    "test:poly": "node --test --test-concurrency=1 test/poly/server.test.js",
+    "test": "npm run test:nock; npm run test:polly",
+    "test:nock": "node --test --test-concurrency=1 test/nock/server.test.js",
+    "test:polly": "node --test --test-concurrency=1 test/polly/server.test.js",
     "test:all": "node --test --test-concurrency=1 test/**/*.test.js"
   },
   "keywords": [],

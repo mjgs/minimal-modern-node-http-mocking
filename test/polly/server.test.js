@@ -1,4 +1,4 @@
-// test/poly/server.test.js
+// test/polly/server.test.js
 
 import { test, describe, before, after } from 'node:test';
 import assert from 'node:assert';
@@ -17,7 +17,7 @@ Polly.register(NodeHttpAdapter);
 Polly.register(FSPersister);
 
 const POLLY_MODE = process.env.POLLY_MODE || 'live';
-const FIXTURES_BASE = path.join(process.cwd(), 'test/fixtures/poly');
+const FIXTURES_BASE = path.join(process.cwd(), 'test/fixtures/polly');
 const port = 3002;
 const baseUrl = `http://127.0.0.1:${port}`;
 
