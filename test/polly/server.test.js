@@ -120,41 +120,49 @@ describe(`Baseline: Polly Interception [Mode: ${POLLY_MODE}]`, () => {
       }
     });
 
-    test('should perform merge (no changes) - 204 (INCOMPATIBILITY)', async (t) => {
+    test('should perform merge (no changes) - 204 (INCOMPATIBILITY - live mode)', async (t) => {
       const polly = await setupPolly(t.name, ['fetch']);
+      const octokit = new Octokit({ 
+        baseUrl,
+        request: { retries: 0 } 
+      });
       
-      // Hijack the actual console.error for this specific block 
-      // because Polly's FetchAdapter is being stubborn.
       const originalError = console.error;
-      console.error = () => {};
-
-      if (POLLY_MODE === 'live') {
-        polly.server.post(`${baseUrl}/repos/owner/repo/merges`).intercept((req, res) => {
-          res.sendStatus(204);
-        });
-      }
+      console.error = () => {}; 
 
       try {
-        const octokit = new Octokit({ 
-          baseUrl,
-          request: { retries: 0 } 
-        });
+        if (POLLY_MODE === 'live') {
+          polly.server.post(`${baseUrl}/repos/owner/repo/merges`).intercept((req, res) => {
+            res.sendStatus(204);
+          });
 
-        await octokit.rest.repos.merge({ 
-          owner: 'owner', repo: 'repo', base: 'main', head: 'already-synced' 
-        });
-      } catch (err) {
-        const errorMessage = err.cause?.message || err.message;
-        if (errorMessage.includes('Invalid response status code 204')) {
-          return; 
+          // In LIVE mode, Polly's FetchAdapter triggers an Undici crash when 
+          // constructing a Response for a 204 status.
+          await assert.rejects(
+            octokit.rest.repos.merge({ 
+              owner: 'owner', repo: 'repo', base: 'main', head: 'already-synced' 
+            }),
+            (err) => {
+              const msg = err.cause?.message || err.message || "";
+              return /Invalid response status code 204/.test(msg);
+            },
+            'Should have thrown Undici 204 error due to Polly FetchAdapter reconstruction'
+          );
+        } else {
+          // In RECORD/PLAYBACK, Polly abstracts the response construction, 
+          // bypassing the native Undici 204 restriction.
+          const res = await octokit.rest.repos.merge({ 
+            owner: 'owner', repo: 'repo', base: 'main', head: 'already-synced' 
+          });
+
+          assert.strictEqual(res.status, 204, 'Polly should successfully handle the 204 response in record/playback');
         }
-        throw err;
       } finally {
-        console.error = originalError; // Restore it immediately
+        console.error = originalError;
         await polly.stop();
       }
     });
-
+    
     test('should perform merge (some changes) - 201', async (t) => {
       const polly = await setupPolly(t.name, ['fetch']);
       if (POLLY_MODE === 'live') {
