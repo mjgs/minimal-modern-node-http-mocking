@@ -1,0 +1,19 @@
+[
+    {
+        "scope": "http://localhost:3001",
+        "method": "POST",
+        "path": "/repos/owner/repo/merges",
+        "body": {
+            "base": "main",
+            "head": "already-synced"
+        },
+        "status": 204,
+        "response": "",
+        "rawHeaders": {
+            "connection": "close",
+            "date": "Mon, 11 May 2026 13:46:26 GMT",
+            "x-powered-by": "Express"
+        },
+        "responseIsBinary": false
+    }
+]

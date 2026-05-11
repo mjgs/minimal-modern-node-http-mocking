@@ -10,11 +10,12 @@
             "full_name": "owner/repo"
         },
         "rawHeaders": {
-            "connection": "close",
+            "connection": "keep-alive",
             "content-length": "40",
             "content-type": "application/json; charset=utf-8",
-            "date": "Mon, 11 May 2026 09:13:46 GMT",
+            "date": "Mon, 11 May 2026 13:46:09 GMT",
             "etag": "W/\"28-J4t0bdguo4p5KbHJUbtZdyOMGrQ\"",
+            "keep-alive": "timeout=5",
             "x-powered-by": "Express"
         },
         "responseIsBinary": false

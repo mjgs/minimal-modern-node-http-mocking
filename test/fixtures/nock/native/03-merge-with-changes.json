@@ -1,0 +1,27 @@
+[
+    {
+        "scope": "http://localhost:3001",
+        "method": "POST",
+        "path": "/repos/owner/repo/merges",
+        "body": {
+            "base": "main",
+            "head": "feature"
+        },
+        "status": 201,
+        "response": {
+            "merged": true,
+            "sha": "12345abcde",
+            "message": "Merged feature into main"
+        },
+        "rawHeaders": {
+            "connection": "keep-alive",
+            "content-length": "71",
+            "content-type": "application/json; charset=utf-8",
+            "date": "Mon, 11 May 2026 13:46:23 GMT",
+            "etag": "W/\"47-8iAH1FSKymB8YsqKinTWlpl704o\"",
+            "keep-alive": "timeout=5",
+            "x-powered-by": "Express"
+        },
+        "responseIsBinary": false
+    }
+]
