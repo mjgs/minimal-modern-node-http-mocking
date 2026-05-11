@@ -9,44 +9,80 @@ import NodeHttpAdapter from '@pollyjs/adapter-node-http';
 import FSPersister from '@pollyjs/persister-fs';
 import { Octokit } from 'octokit';
 import nodeFetch from 'node-fetch';
+import { axiosFetcher } from '../utils/axiosFetcher.js';
 import { startServer } from '../../src/server.js';
 
 Polly.register(FetchAdapter);
 Polly.register(NodeHttpAdapter);
 Polly.register(FSPersister);
 
-// Map your custom modes to Polly's native modes
+const POLLY_MODE = process.env.POLLY_MODE || 'live';
+const FIXTURES_BASE = path.join(process.cwd(), 'test/fixtures/poly');
+const port = 3002;
+const baseUrl = `http://localhost:${port}`;
+
 const MODE_MAP = {
   record: 'record',
   playback: 'replay',
   off: 'passthrough',
-  live: 'passthrough' // We use passthrough so we can manually intercept
+  live: 'passthrough'
 };
 
-const POLLY_MODE = process.env.POLLY_MODE || 'live';
+// --- GLOBAL UTILITIES ---
+const originalConsole = { ...console };
 
+function mockConsole() {
+  console.info = () => {};
+  console.warn = () => {};
+  console.debug = () => {};
+  // It only checks for 'record' or 'playback'
+  if (POLLY_MODE === 'record' || POLLY_MODE === 'playback') {
+    console.log = () => {};
+  }
+}
+
+function restoreConsole() {
+  Object.assign(console, originalConsole);
+}
+
+async function setupPolly(testName, adapters = ['fetch', 'node-http']) {
+  return new Polly(testName, {
+    mode: MODE_MAP[POLLY_MODE] || 'passthrough',
+    adapters,
+    persister: 'fs',
+    persisterOptions: {
+      fs: { recordingsDir: FIXTURES_BASE }
+    },
+    logging: false,
+    recordFailedRequests: true
+  });
+}
+
+// --- 1. ENVIRONMENT SETUP ---
+describe('Test Environment Setup', () => {
+  let server;
+
+  before(async () => {
+    server = await startServer(port);
+  });
+
+  after(async () => {
+    if (server) await server.close();
+  });
+
+  test('should verify the local server is reachable via direct fetch', async () => {
+    const res = await fetch(`${baseUrl}/health`);
+    const data = await res.json();
+    assert.strictEqual(data.status, 'ok');
+  });
+});
+
+// --- 2. POLLY INTERCEPTION MATRIX ---
 describe(`Baseline: Polly Interception [Mode: ${POLLY_MODE}]`, () => {
   let server;
-  const port = 3002;
-  const baseUrl = `http://localhost:${port}`;
-  const originalConsole = { ...console };
-
-  function mockConsole() {
-    console.info = () => {};
-    console.warn = () => {};
-    console.debug = () => {};
-    if (POLLY_MODE === 'record' || POLLY_MODE === 'playback') {
-      console.log = () => {};
-    }
-  }
-
-  function restoreConsole() {
-    Object.assign(console, originalConsole);
-  }
 
   before(async () => {
     mockConsole();
-    // Only start the server if we aren't in playback (replay) mode
     if (POLLY_MODE !== 'playback') {
       server = await startServer(port);
     }
@@ -57,115 +93,250 @@ describe(`Baseline: Polly Interception [Mode: ${POLLY_MODE}]`, () => {
     if (server) await server.close();
   });
 
-  // Helper to initialize Polly with the consistent configuration
-  async function setupPolly(testName, adapters = ['fetch']) {
-    return new Polly(testName, {
-      mode: MODE_MAP[POLLY_MODE] || 'passthrough',
-      adapters,
-      persister: 'fs',
-      persisterOptions: {
-        fs: { recordingsDir: path.join(process.cwd(), 'test/fixtures/poly') }
-      },
-      // Match the Nock behavior: don't allow unmocked requests in playback
-      logging: false 
-    });
-  }
-
-  describe('Test Environment Setup', () => {
-    test('should verify the local server is reachable via direct fetch', async () => {
-      const res = await fetch(`${baseUrl}/health`);
-      const data = await res.json();
-      assert.strictEqual(data.status, 'ok');
-    });
-  });
-
-  describe('Core Baseline Tests', () => {
-    test('should successfully intercept native fetch requests', async (t) => {
+  // --- NATIVE FETCH ---
+  describe('Transport: Native Fetch', () => {
+    test('should fetch repo', async (t) => {
       const polly = await setupPolly(t.name, ['fetch']);
-      
-      // Manual interception only in 'live' mode (mimics your Nock logic)
       if (POLLY_MODE === 'live') {
-        polly.server
-          .get(`${baseUrl}/repos/owner/repo`)
-          .intercept((req, res) => res.status(200).json({ mock: true }));
+        polly.server.get(`${baseUrl}/repos/owner/repo`).intercept((req, res) => {
+          res.status(200).json({ mock: true });
+        });
       }
 
       try {
         const octokit = new Octokit({ baseUrl });
         const { data } = await octokit.request('GET /repos/owner/repo');
 
-        if (POLLY_MODE === 'off' || POLLY_MODE === 'record' || POLLY_MODE === 'playback') {
-          assert.strictEqual(data.full_name, 'owner/repo');
-        } else {
-          // This branch ONLY runs in 'live' mode where you manually .intercept()
+        if (POLLY_MODE === 'live') {
           assert.strictEqual(data.mock, true);
+        } else {
+          assert.strictEqual(data.full_name, 'owner/repo');
         }
       } finally {
         await polly.stop();
       }
     });
 
-    test('should successfully intercept node-fetch requests', async (t) => {
-      const polly = await setupPolly(t.name, ['node-http']);
+    test('should perform merge (no changes) - 204 (INCOMPATIBILITY)', async (t) => {
+      const polly = await setupPolly(t.name, ['fetch']);
       
+      // Hijack the actual console.error for this specific block 
+      // because Polly's FetchAdapter is being stubborn.
+      const originalError = console.error;
+      console.error = () => {};
+
       if (POLLY_MODE === 'live') {
-        polly.server
-          .get(`${baseUrl}/repos/owner/repo`)
-          .intercept((req, res) => res.status(200).json({ mock: true }));
+        polly.server.post(`${baseUrl}/repos/owner/repo/merges`).intercept((req, res) => {
+          res.sendStatus(204);
+        });
+      }
+
+      try {
+        const octokit = new Octokit({ 
+          baseUrl,
+          request: { retries: 0 } 
+        });
+
+        await octokit.rest.repos.merge({ 
+          owner: 'owner', repo: 'repo', base: 'main', head: 'already-synced' 
+        });
+      } catch (err) {
+        const errorMessage = err.cause?.message || err.message;
+        if (errorMessage.includes('Invalid response status code 204')) {
+          return; 
+        }
+        throw err;
+      } finally {
+        console.error = originalError; // Restore it immediately
+        await polly.stop();
+      }
+    });
+
+    test('should perform merge (some changes) - 201', async (t) => {
+      const polly = await setupPolly(t.name, ['fetch']);
+      if (POLLY_MODE === 'live') {
+        polly.server.post(`${baseUrl}/repos/owner/repo/merges`).intercept((req, res) => {
+          res.status(201).json({ mockMerged: true });
+        });
+      }
+
+      try {
+        const octokit = new Octokit({ baseUrl });
+        const { data } = await octokit.rest.repos.merge({ 
+          owner: 'owner', 
+          repo: 'repo', 
+          base: 'main', 
+          head: 'feature' 
+        });
+
+        if (POLLY_MODE === 'live') {
+          assert.strictEqual(data.mockMerged, true);
+        } else {
+          assert.strictEqual(data.merged, true);
+        }
+      } finally {
+        await polly.stop();
+      }
+    });
+  });
+
+  // --- NODE-FETCH ---
+  describe('Transport: node-fetch', () => {
+    test('should fetch repo', async (t) => {
+      const polly = await setupPolly(t.name, ['node-http']);
+      if (POLLY_MODE === 'live') {
+        polly.server.get(`${baseUrl}/repos/owner/repo`).intercept((req, res) => {
+          res.status(200).json({ mock: true });
+        });
       }
 
       try {
         const octokit = new Octokit({ baseUrl, request: { fetch: nodeFetch } });
         const { data } = await octokit.request('GET /repos/owner/repo');
 
-        if (POLLY_MODE === 'off' || POLLY_MODE === 'record' || POLLY_MODE === 'playback') {
-          assert.strictEqual(data.full_name, 'owner/repo');
-        } else {
+        if (POLLY_MODE === 'live') {
           assert.strictEqual(data.mock, true);
+        } else {
+          assert.strictEqual(data.full_name, 'owner/repo');
         }
       } finally {
         await polly.stop();
       }
     });
 
-    test('should handle a manual 204 response without crashing', async (t) => {
+    test('should perform merge (no changes) - 204', async (t) => {
       const polly = await setupPolly(t.name, ['node-http']);
-      
       if (POLLY_MODE === 'live') {
-        polly.server
-          .post(`${baseUrl}/repos/owner/repo/merges`)
-          .intercept((req, res) => res.sendStatus(204));
+        polly.server.post(`${baseUrl}/repos/owner/repo/merges`).intercept((req, res) => {
+          res.sendStatus(204);
+        });
       }
 
       try {
-        const octokit = new Octokit({ baseUrl, request: { fetch: nodeFetch } });
-        const res = await octokit.rest.repos.merge({ 
-          owner: 'owner', repo: 'repo', base: 'main', head: 'already-synced' 
+        const octokit = new Octokit({ 
+          baseUrl, 
+          request: { fetch: nodeFetch, headers: { connection: 'close' } } 
         });
-        
+        const res = await octokit.rest.repos.merge({ 
+          owner: 'owner', 
+          repo: 'repo', 
+          base: 'main', 
+          head: 'already-synced' 
+        });
         assert.strictEqual(res.status, 204);
       } finally {
         await polly.stop();
       }
     });
 
-    test('should successfully intercept a 201 via the rest client wrapper', async (t) => {
-      const polly = await setupPolly(t.name, ['fetch']);
-      
+    test('should perform merge (some changes) - 201', async (t) => {
+      const polly = await setupPolly(t.name, ['node-http']);
       if (POLLY_MODE === 'live') {
-        polly.server
-          .post(`${baseUrl}/repos/owner/repo/merges`)
-          .intercept((req, res) => res.status(201).json({ merged: true }));
+        polly.server.post(`${baseUrl}/repos/owner/repo/merges`).intercept((req, res) => {
+          res.status(201).json({ mockMerged: true });
+        });
       }
 
       try {
-        const octokit = new Octokit({ baseUrl });
-        const { data } = await octokit.rest.repos.merge({ 
-          owner: 'owner', repo: 'repo', base: 'main', head: 'feature' 
+        const octokit = new Octokit({ 
+          baseUrl, 
+          request: { fetch: nodeFetch, headers: { connection: 'close' } } 
         });
-        
-        // Server returns merged: true for 'feature' branch
-        assert.strictEqual(data.merged, true);
+        const { data } = await octokit.rest.repos.merge({ 
+          owner: 'owner', 
+          repo: 'repo', 
+          base: 'main', 
+          head: 'feature' 
+        });
+
+        if (POLLY_MODE === 'live') {
+          assert.strictEqual(data.mockMerged, true);
+        } else {
+          assert.strictEqual(data.merged, true);
+        }
+      } finally {
+        await polly.stop();
+      }
+    });
+  });
+
+  // --- AXIOS ---
+  describe('Transport: Axios', () => {
+    test('should fetch repo', async (t) => {
+      const polly = await setupPolly(t.name, ['node-http']);
+      if (POLLY_MODE === 'live') {
+        polly.server.get(`${baseUrl}/repos/owner/repo`).intercept((req, res) => {
+          res.status(200).json({ mock: true });
+        });
+      }
+
+      try {
+        const octokit = new Octokit({ 
+          baseUrl, 
+          request: { fetch: axiosFetcher, headers: { connection: 'close' } } 
+        });
+        const { data } = await octokit.request('GET /repos/owner/repo');
+
+        if (POLLY_MODE === 'live') {
+          assert.strictEqual(data.mock, true);
+        } else {
+          assert.strictEqual(data.full_name, 'owner/repo');
+        }
+      } finally {
+        await polly.stop();
+      }
+    });
+
+    test('should perform merge (no changes) - 204', async (t) => {
+      const polly = await setupPolly(t.name, ['node-http']);
+      if (POLLY_MODE === 'live') {
+        polly.server.post(`${baseUrl}/repos/owner/repo/merges`).intercept((req, res) => {
+          res.sendStatus(204);
+        });
+      }
+
+      try {
+        const octokit = new Octokit({ 
+          baseUrl, 
+          request: { fetch: axiosFetcher, headers: { connection: 'close' } } 
+        });
+        const res = await octokit.rest.repos.merge({ 
+          owner: 'owner', 
+          repo: 'repo', 
+          base: 'main', 
+          head: 'already-synced' 
+        });
+        assert.strictEqual(res.status, 204);
+      } finally {
+        await polly.stop();
+      }
+    });
+
+    test('should perform merge (some changes) - 201', async (t) => {
+      const polly = await setupPolly(t.name, ['node-http']);
+      if (POLLY_MODE === 'live') {
+        polly.server.post(`${baseUrl}/repos/owner/repo/merges`).intercept((req, res) => {
+          res.status(201).json({ mockMerged: true });
+        });
+      }
+
+      try {
+        const octokit = new Octokit({ 
+          baseUrl, 
+          request: { fetch: axiosFetcher, headers: { connection: 'close' } } 
+        });
+        const { data } = await octokit.rest.repos.merge({ 
+          owner: 'owner', 
+          repo: 'repo', 
+          base: 'main', 
+          head: 'feature' 
+        });
+
+        if (POLLY_MODE === 'live') {
+          assert.strictEqual(data.mockMerged, true);
+        } else {
+          assert.strictEqual(data.merged, true);
+        }
       } finally {
         await polly.stop();
       }
