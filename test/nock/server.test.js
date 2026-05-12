@@ -126,14 +126,22 @@ describe(`Baseline: Nock Interception [Mode: ${NOCK_MODE}]`, () => {
       const { nockDone } = await nock.back('02-merge-no-changes.json');
       
       try {
-        if (NOCK_MODE === 'live') {
-          nock(baseUrl).post('/repos/owner/repo/merges').reply(204);
+        // SUCCESS BRANCH: 'live' (manual) and 'off' (real server)
+        if (NOCK_MODE === 'live' || NOCK_MODE === 'off') {
+          if (NOCK_MODE === 'live') {
+            nock(baseUrl).post('/repos/owner/repo/merges').reply(204);
+          }
 
           const res = await octokit.rest.repos.merge({ 
             owner: 'owner', repo: 'repo', base: 'main', head: 'already-synced' 
           });
-          assert.strictEqual(res.status, 204, 'Manual mock should succeed in live mode');
+
+          // Validate that both the real server and manual interceptor produce a 
+          // spec-compliant 204 response with no body, avoiding the Undici crash.
+          assert.strictEqual(res.status, 204);
+          assert.ok(!res.data);
         } else {
+          // FAILURE BRANCH: 'record' and 'playback' crash due to Nock's internal body handling
           await assert.rejects(
             octokit.rest.repos.merge({ 
               owner: 'owner', repo: 'repo', base: 'main', head: 'already-synced' 
