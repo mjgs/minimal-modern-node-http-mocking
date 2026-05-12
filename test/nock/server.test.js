@@ -12,7 +12,7 @@ import path from 'node:path';
 const NOCK_MODE = process.env.NOCK_MODE || 'live';
 const FIXTURES_BASE = path.join(process.cwd(), 'test/fixtures/nock');
 const port = 3001;
-const baseUrl = `http://localhost:${port}`;
+const baseUrl = `http://127.0.0.1:${port}`;
 
 // --- GLOBAL UTILITIES ---
 const originalConsole = { ...console };
