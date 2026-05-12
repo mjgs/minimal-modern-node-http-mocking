@@ -1,6 +1,6 @@
 [
     {
-        "scope": "http://localhost:3001",
+        "scope": "http://127.0.0.1:3001",
         "method": "GET",
         "path": "/repos/owner/repo",
         "body": "",
@@ -13,7 +13,7 @@
             "connection": "keep-alive",
             "content-length": "40",
             "content-type": "application/json; charset=utf-8",
-            "date": "Mon, 11 May 2026 17:27:20 GMT",
+            "date": "Tue, 12 May 2026 10:54:57 GMT",
             "etag": "W/\"28-J4t0bdguo4p5KbHJUbtZdyOMGrQ\"",
             "keep-alive": "timeout=5",
             "x-powered-by": "Express"

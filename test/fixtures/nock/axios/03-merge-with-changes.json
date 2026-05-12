@@ -1,6 +1,6 @@
 [
     {
-        "scope": "http://localhost:3001",
+        "scope": "http://127.0.0.1:3001",
         "method": "POST",
         "path": "/repos/owner/repo/merges",
         "body": {
@@ -17,7 +17,7 @@
             "connection": "close",
             "content-length": "71",
             "content-type": "application/json; charset=utf-8",
-            "date": "Mon, 11 May 2026 17:27:25 GMT",
+            "date": "Tue, 12 May 2026 10:55:02 GMT",
             "etag": "W/\"47-8iAH1FSKymB8YsqKinTWlpl704o\"",
             "x-powered-by": "Express"
         },
