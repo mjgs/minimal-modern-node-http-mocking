@@ -226,7 +226,7 @@ describe(`Baseline: Polly Interception [Mode: ${POLLY_MODE}]`, () => {
       try {
         const octokit = new Octokit({ 
           baseUrl, 
-          request: { fetch: nodeFetch, headers: { connection: 'close' } } 
+          request: { fetch: nodeFetch } 
         });
         const res = await octokit.rest.repos.merge({ 
           owner: 'owner', 
@@ -251,7 +251,7 @@ describe(`Baseline: Polly Interception [Mode: ${POLLY_MODE}]`, () => {
       try {
         const octokit = new Octokit({ 
           baseUrl, 
-          request: { fetch: nodeFetch, headers: { connection: 'close' } } 
+          request: { fetch: nodeFetch } 
         });
         const { data } = await octokit.rest.repos.merge({ 
           owner: 'owner', 
@@ -284,7 +284,7 @@ describe(`Baseline: Polly Interception [Mode: ${POLLY_MODE}]`, () => {
       try {
         const octokit = new Octokit({ 
           baseUrl, 
-          request: { fetch: axiosFetcher, headers: { connection: 'close' } } 
+          request: { fetch: axiosFetcher } 
         });
         const { data } = await octokit.request('GET /repos/owner/repo');
 
@@ -309,7 +309,7 @@ describe(`Baseline: Polly Interception [Mode: ${POLLY_MODE}]`, () => {
       try {
         const octokit = new Octokit({ 
           baseUrl, 
-          request: { fetch: axiosFetcher, headers: { connection: 'close' } } 
+          request: { fetch: axiosFetcher } 
         });
         const res = await octokit.rest.repos.merge({ 
           owner: 'owner', 
@@ -334,7 +334,7 @@ describe(`Baseline: Polly Interception [Mode: ${POLLY_MODE}]`, () => {
       try {
         const octokit = new Octokit({ 
           baseUrl, 
-          request: { fetch: axiosFetcher, headers: { connection: 'close' } } 
+          request: { fetch: axiosFetcher } 
         });
         const { data } = await octokit.rest.repos.merge({ 
           owner: 'owner', 

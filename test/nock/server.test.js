@@ -208,7 +208,7 @@ describe(`Baseline: Nock Interception [Mode: ${NOCK_MODE}]`, () => {
 
     test('should perform merge (no changes) - 204', async () => {
       nock.back.fixtures = fixtureDir;
-      const octokit = new Octokit({ baseUrl, request: { fetch: nodeFetch, headers: { connection: 'close' } } });
+      const octokit = new Octokit({ baseUrl, request: { fetch: nodeFetch } });
       const { nockDone } = await nock.back('02-merge-no-changes.json');
       
       if (NOCK_MODE === 'live') {
@@ -228,7 +228,7 @@ describe(`Baseline: Nock Interception [Mode: ${NOCK_MODE}]`, () => {
 
     test('should perform merge (some changes) - 201', async () => {
       nock.back.fixtures = fixtureDir;
-      const octokit = new Octokit({ baseUrl, request: { fetch: nodeFetch, headers: { connection: 'close' } } });
+      const octokit = new Octokit({ baseUrl, request: { fetch: nodeFetch } });
       const { nockDone } = await nock.back('03-merge-with-changes.json');
       
       if (NOCK_MODE === 'live') {
@@ -257,7 +257,7 @@ describe(`Baseline: Nock Interception [Mode: ${NOCK_MODE}]`, () => {
 
     test('should fetch repo', async () => {
       nock.back.fixtures = fixtureDir;
-      const octokit = new Octokit({ baseUrl, request: { fetch: axiosFetcher, headers: { connection: 'close' } } });
+      const octokit = new Octokit({ baseUrl, request: { fetch: axiosFetcher } });
       const { nockDone } = await nock.back('01-fetch-repo.json');
       
       if (NOCK_MODE === 'live') {
@@ -276,7 +276,7 @@ describe(`Baseline: Nock Interception [Mode: ${NOCK_MODE}]`, () => {
 
     test('should perform merge (no changes) - 204', async () => {
       nock.back.fixtures = fixtureDir;
-      const octokit = new Octokit({ baseUrl, request: { fetch: axiosFetcher, headers: { connection: 'close' } } });
+      const octokit = new Octokit({ baseUrl, request: { fetch: axiosFetcher } });
       const { nockDone } = await nock.back('02-merge-no-changes.json');
       
       if (NOCK_MODE === 'live') {
@@ -296,7 +296,7 @@ describe(`Baseline: Nock Interception [Mode: ${NOCK_MODE}]`, () => {
 
     test('should perform merge (some changes) - 201', async () => {
       nock.back.fixtures = fixtureDir;
-      const octokit = new Octokit({ baseUrl, request: { fetch: axiosFetcher, headers: { connection: 'close' } } });
+      const octokit = new Octokit({ baseUrl, request: { fetch: axiosFetcher } });
       const { nockDone } = await nock.back('03-merge-with-changes.json');
       
       if (NOCK_MODE === 'live') {
