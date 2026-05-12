@@ -16,6 +16,10 @@
   "author": "Mark Smith",
   "license": "ISC",
   "type": "module",
+  "engines": {
+    "node": ">=18.0.0",
+    "npm": ">=8.0.0"
+  },
   "dependencies": {
     "express": "^5.2.1",
     "node-fetch": "^3.3.2",
