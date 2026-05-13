@@ -46,8 +46,6 @@ describe('Test Environment Setup', () => {
   after(async () => {
     if (server) {
       await server.close();
-      // Small delay to ensure the OS releases the port
-      // await new Promise(resolve => setTimeout(resolve, 10)); 
     }
   });
 
@@ -78,7 +76,7 @@ describe(`Baseline: Nock Interception [Mode: ${NOCK_MODE}]`, () => {
     nock.activate();
     if (NOCK_MODE === 'off') {
       nock.restore();
-    }
+    } 
     if (NOCK_MODE !== 'playback') {
       server = await startServer(port);
     }
