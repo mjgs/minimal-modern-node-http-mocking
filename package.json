@@ -1,7 +1,7 @@
 {
   "name": "modern-node-http-mocking",
   "version": "1.0.0",
-  "description": "",
+  "description": "A research and diagnostic suite designed to isolate, document, and resolve the complexities of HTTP mocking in modern Node.js environments",
   "main": "index.js",
   "directories": {
     "test": "test"
