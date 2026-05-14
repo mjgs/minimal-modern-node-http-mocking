@@ -50,7 +50,7 @@ The project is structured to test the intersection of five critical dimensions:
 1. **Mocking Engines:** Nock vs. Polly.js
 2. **Mocking Strategy:** Hand-coded interceptors (`live`) vs. Automated recordings (`record`/`playback`)
 3. **Response Types:** Standard data requests vs. **204 No Content** (the "Incompatibility" edge case)
-4. **Transport Layers:** Native `fetch` (Undici), `node-fetch`, and `Axios`
+4. **Transport Layers:** Native `fetch` (Undici), `node-fetch`, and `axios`
 5. **Abstraction Level:** Direct network connections (test environment setup) vs. **Octokit** library requests (the primary target)
 
 ---
