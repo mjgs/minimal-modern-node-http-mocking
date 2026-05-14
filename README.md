@@ -1,4 +1,4 @@
-# modern-node-http-mocking
+# minimal-modern-node-http-mocking
 
 A research and diagnostic suite designed to isolate, document, and resolve the complexities of HTTP mocking in modern Node.js environments.
 
